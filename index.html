@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Block Blast Game</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+        }
+        .game-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        #game-board {
+            display: grid;
+            grid-template-columns: repeat(10, 30px);
+            grid-template-rows: repeat(10, 30px);
+            gap: 2px;
+        }
+        .tile {
+            width: 30px;
+            height: 30px;
+            background-color: #e0e0e0;
+            border: 1px solid #ccc;
+        }
+        .tile.active {
+            background-color: #2196f3;
+        }
+        #blocks {
+            margin-top: 20px;
+            display: flex;
+            gap: 10px;
+        }
+        .block {
+            display: grid;
+            grid-template-columns: repeat(3, 30px);
+            gap: 2px;
+        }
+        .block .tile {
+            background-color: #ff5722;
+        }
+        #score {
+            margin-top: 20px;
+            font-size: 1.5em;
+        }
+        button {
+            margin-top: 10px;
+            padding: 10px 20px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="game-container">
+    <h1>Block Blast</h1>
+    <div id="game-board"></div>
+    <div id="blocks"></div>
+    <div id="score">Score: 0</div>
+    <button onclick="resetGame()">Reset Game</button>
+</div>
+
+<script>
+    const boardSize = 10;
+    const board = [];
+    let currentBlocks = [];
+    let score = 0;
+
+    function createBoard() {
+        const boardElement = document.getElementById('game-board');
+        boardElement.innerHTML = '';
+        for (let i = 0; i < boardSize; i++) {
+            board[i] = [];
+            for (let j = 0; j < boardSize; j++) {
+                const tile = document.createElement('div');
+                tile.classList.add('tile');
+                tile.dataset.row = i;
+                tile.dataset.col = j;
+                tile.addEventListener('click', () => placeBlock(i, j));
+                board[i][j] = false; // false means empty
+                boardElement.appendChild(tile);
+            }
+        }
+    }
+
+    function generateBlocks() {
+        currentBlocks = [];
+        const blocksContainer = document.getElementById('blocks');
+        blocksContainer.innerHTML = '';
+        for (let i = 0; i < 3; i++) {
+            const block = getRandomBlock();
+            currentBlocks.push(block);
+            const blockElement = document.createElement('div');
+            blockElement.classList.add('block');
+            block.forEach(row => {
+                row.forEach(cell => {
+                    const blockTile = document.createElement('div');
+                    blockTile.classList.add('tile');
+                    if (cell) blockTile.classList.add('active');
+                    blockElement.appendChild(blockTile);
+                });
+            });
+            blocksContainer.appendChild(blockElement);
+        }
+    }
+
+    function getRandomBlock() {
+        const blocks = [
+            [[1, 1], [0, 0], [0, 0]],  // 2-block horizontal
+            [[1, 0], [1, 0], [0, 0]],  // 2-block vertical
+            [[1, 1], [1, 0], [0, 0]],  // L-shaped block
+            [[1, 1], [1, 1], [0, 0]],  // Square block
+            [[1, 1], [1, 1], [1, 0]],  // T-shaped block
+        ];
+        return blocks[Math.floor(Math.random() * blocks.length)];
+    }
+
+    function placeBlock(row, col) {
+        const block = currentBlocks.shift();
+        if (canPlaceBlock(row, col, block)) {
+            block.forEach((blockRow, i) => {
+                blockRow.forEach((blockCell, j) => {
+                    if (blockCell) {
+                        const tile = document.querySelector(`[data-row="${row + i}"][data-col="${col + j}"]`);
+                        tile.classList.add('active');
+                        board[row + i][col + j] = true; // Mark as filled
+                    }
+                });
+            });
+
+            // Check for row/column clears
+            checkAndClearLines();
+
+            // Update score
+            updateScore();
+
+            // Generate new blocks if all blocks are placed
+            if (currentBlocks.length === 0) {
+                generateBlocks();
+            }
+        }
+    }
+
+    function canPlaceBlock(row, col, block) {
+        for (let i = 0; i < block.length; i++) {
+            for (let j = 0; j < block[i].length; j++) {
+                if (block[i][j]) {
+                    if (row + i >= boardSize || col + j >= boardSize || board[row + i][col + j]) {
+                        return false;
+                    }
+                }
+            }
+        }
+        return true;
+    }
+
+    function checkAndClearLines() {
+        for (let i = 0; i < boardSize; i++) {
+            let fullRow = true;
+            let fullCol = true;
+            for (let j = 0; j < boardSize; j++) {
+                if (!board[i][j]) fullRow = false;
+                if (!board[j][i]) fullCol = false;
+            }
+            if (fullRow) clearRow(i);
+            if (fullCol) clearCol(i);
+        }
+    }
+
+    function clearRow(row) {
+        for (let i = 0; i < boardSize; i++) {
+            const tile = document.querySelector(`[data-row="${row}"][data-col="${i}"]`);
+            tile.classList.remove('active');
+            board[row][i] = false;
+        }
+        score += 50;
+    }
+
+    function clearCol(col) {
+        for (let i = 0; i < boardSize; i++) {
+            const tile = document.querySelector(`[data-row="${i}"][data-col="${col}"]`);
+            tile.classList.remove('active');
+            board[i][col] = false;
+        }
+        score += 50;
+    }
+
+    function updateScore() {
+        document.getElementById('score').innerText = 'Score: ' + score;
+    }
+
+    function resetGame() {
+        score = 0;
+        updateScore();
+        createBoard();
+        generateBlocks();
+    }
+
+    // Initialize the game
+    resetGame();
+</script>
+
+</body>
+</html>
