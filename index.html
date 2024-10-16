@@ -79,6 +79,8 @@
     let currentBlocks = [];
     let score = 0;
     let draggingBlock = null;
+    let draggingElement = null;
+    let initialTouch = null;
 
     function createBoard() {
         const boardElement = document.getElementById('game-board');
@@ -92,7 +94,9 @@
                 tile.dataset.col = j;
                 tile.addEventListener('dragover', allowDrop);
                 tile.addEventListener('drop', () => dropBlock(i, j));
-                board[i][j] = false; // false means empty
+                tile.addEventListener('touchmove', (e) => e.preventDefault()); // Prevent scrolling
+                tile.addEventListener('touchend', (e) => handleDropTouch(i, j, e));
+                board[i][j] = false;
                 boardElement.appendChild(tile);
             }
         }
@@ -127,11 +131,27 @@
         blockElement.draggable = true;
         blockElement.addEventListener('dragstart', (e) => {
             draggingBlock = block;
+            draggingElement = e.target;
             e.target.classList.add('dragging');
         });
         blockElement.addEventListener('dragend', (e) => {
             e.target.classList.remove('dragging');
             draggingBlock = null;
+            draggingElement = null;
+        });
+
+        // Touch events for mobile
+        blockElement.addEventListener('touchstart', (e) => {
+            draggingBlock = block;
+            draggingElement = e.target;
+            initialTouch = e.touches[0];
+            e.target.classList.add('dragging');
+        });
+
+        blockElement.addEventListener('touchend', (e) => {
+            draggingBlock = null;
+            draggingElement.classList.remove('dragging');
+            draggingElement = null;
         });
 
         block.forEach(row => {
@@ -155,19 +175,27 @@
             placeBlock(row, col, draggingBlock);
             draggingBlock = null;
 
-            // Remove the dragged block from the blocks area
-            const draggedElement = document.querySelector('.dragging');
-            draggedElement.remove();
+            if (draggingElement) {
+                draggingElement.remove();
+            }
 
-            // Generate new blocks if all blocks are placed
             if (!document.querySelector('#blocks .block')) {
                 generateBlocks();
             }
 
-            // Check for row/column clears
             checkAndClearLines();
-            // Update score
             updateScore();
+        }
+    }
+
+    function handleDropTouch(row, col, e) {
+        if (draggingBlock && initialTouch) {
+            const dropTarget = document.elementFromPoint(initialTouch.clientX, initialTouch.clientY);
+            if (dropTarget && dropTarget.classList.contains('tile')) {
+                const tileRow = dropTarget.dataset.row;
+                const tileCol = dropTarget.dataset.col;
+                dropBlock(Number(tileRow), Number(tileCol));
+            }
         }
     }
 
@@ -190,7 +218,7 @@
                 if (blockCell) {
                     const tile = document.querySelector(`[data-row="${row + i}"][data-col="${col + j}"]`);
                     tile.classList.add('active');
-                    board[row + i][col + j] = true; // Mark as filled
+                    board[row + i][col + j] = true;
                 }
             });
         });
